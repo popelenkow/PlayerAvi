@@ -3,7 +3,7 @@
 //
 
 #include "stdafx.h"
-#include "PlayerAvi.h"
+#include "PlayerAviApp.h"
 #include "PlayerAviDlg.h"
 
 #ifdef _DEBUG

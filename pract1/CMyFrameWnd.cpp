@@ -18,17 +18,18 @@ CMyFrameWnd::CMyFrameWnd()
 
 void CMyFrameWnd::OnPaint()
 {
-	CPaintDC dc = CPaintDC(this);
-	//MyPicture* im = reader->get();
-	if (image != nullptr)
+	CPaintDC& dc = CPaintDC(this);
+	if (frame_manager != nullptr)
 	{
-		BITMAPINFO* info = &image->get_bmp_info();
-		int w = info->bmiHeader.biWidth;
-		int h = info->bmiHeader.biHeight;
-		::SetDIBitsToDevice(dc, 0, 0, w, h, 0, 0, 0, w, image->get_data(), info, 0);
-		
+		const Frame* im = frame_manager->get_display_frame();
+		if (im != nullptr)
+		{
+			const BITMAPINFO* info = &im->bmp_info;
+			int w = info->bmiHeader.biWidth;
+			int h = info->bmiHeader.biHeight;
+			::SetDIBitsToDevice(dc, 0, 0, w, h, 0, 0, 0, w, im->data, info, 0);
+		}
 	}
-	//reader->ready();
 }
 
 
