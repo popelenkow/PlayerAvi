@@ -1,7 +1,7 @@
 #pragma once
 #include "afxwin.h"
 #include "afxcmn.h"
-#include "MyPlayerAvi.h"
+#include "FrameManager.h"
 
 
 
@@ -30,38 +30,40 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
-	afx_msg void OnEnChangeEditSpeed();
-	afx_msg void OnEnKillfocusEditSpeed();
-	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
-	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	DECLARE_MESSAGE_MAP()
 
 
-	
-	
-	const UINT_PTR ID_timer_slider_frame = 99;
-	void change_speed_player()
-	{
-		player_avi->update_speed(m_SpinSpeed.GetPos());
-	}
-	void change_pos_player()
-	{
-		player_avi->update_pos(m_SpinNumFrame.GetPos());
-	}
+	const UINT_PTR ID_timer_update_window = 98;
 public:
-	CEdit m_EditSpeed;
-	CSliderCtrl m_SliderSpeed;
-	CSpinButtonCtrl m_SpinSpeed;
-
-	CSliderCtrl m_SliderFrame;
+	AviFileManager file_manager;
+	FrameManager* frame_manager = nullptr;
 	CMyFrameWnd frame_wnd;
-	MyPlayerAvi* player_avi = nullptr;
+	Player* player = nullptr;
+	Decompressor* decompressor = nullptr;
+
 	afx_msg void OnBnClickedButtonPlayerStop();
 	afx_msg void OnBnClickedButtonPlayerPause();
 	afx_msg void OnBnClickedButtonPlayerPlay();
-	afx_msg void OnEnChangeEditNumberFrame();
-	CSpinButtonCtrl m_SpinNumFrame;
+
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+
+	CEdit m_EditSpeed;
+	CSliderCtrl m_SliderSpeed;
+	CSpinButtonCtrl m_SpinSpeed;
+	afx_msg void OnEnChangeEditSpeed();
+	afx_msg void OnEnKillfocusEditSpeed();
+	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+
+	bool is_dlg_change = false;
 	CEdit m_EditNumFrame;
+	CSliderCtrl m_SliderFrame;
+	CSpinButtonCtrl m_SpinNumFrame;
+	void change_num_frame();
+	afx_msg void OnEnChangeEditNumberFrame();
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnDeltaposSpinNumberFrame(NMHDR *pNMHDR, LRESULT *pResult);
+
 	afx_msg void OnClose();
+	afx_msg void OnBnClickedButtonOpen();
+
 };

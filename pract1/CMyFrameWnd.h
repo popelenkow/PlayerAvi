@@ -1,27 +1,12 @@
 #pragma once
-#include "Image.h"
 #include <vector>
 #include <memory>
 
-class IReader
+class WndFrameManager
 {
-protected:
-	IReader()
-	{
-	}
-	virtual MyPicture* get_for_reader() = 0;
-	virtual void ready_for_reader() = 0;
 public:
-	MyPicture* get()
-	{
-		return get_for_reader();
-	}
-	void ready()
-	{
-		ready_for_reader();
-	}
+	virtual const Frame* get_display_frame() = 0;
 };
-
 
 class CMyFrameWnd : public CWnd
 {
@@ -32,19 +17,12 @@ public:
 protected:
 	DECLARE_MESSAGE_MAP()
 	afx_msg void OnPaint();
-	//IReader* reader = nullptr;
-	Image* image = nullptr;
+	WndFrameManager* frame_manager = nullptr;
 public:
-	void initialize(Image* _image)
+	void initialize(WndFrameManager* f)
 	{
-		image = _image;
+		frame_manager = f;
 	}
-	/*
-	void set_reader(IReader* _reader)
-	{
-		reader = _reader;
-	}
-	*/
 };
 
 

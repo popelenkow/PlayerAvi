@@ -36,8 +36,8 @@
 
 
 #include <vfw.h> // необходимо для использования структур (AVI-заголовков и т.п.)
-#include "Image.h"
-
+#include "Frame.h"
+#include <cstddef>
 
 
 

@@ -3,7 +3,7 @@
 //
 
 #include "stdafx.h"
-#include "PlayerAvi.h"
+#include "PlayerAviApp.h"
 #include "PlayerAviDlg.h"
 #include "afxdialogex.h"
 #include "resource.h"
@@ -83,8 +83,10 @@ ON_WM_HSCROLL()
 ON_BN_CLICKED(IDC_BUTTON_PLAYER_STOP, &CPlayerAviDlg::OnBnClickedButtonPlayerStop)
 ON_BN_CLICKED(IDC_BUTTON_PLAYER_PAUSE, &CPlayerAviDlg::OnBnClickedButtonPlayerPause)
 ON_BN_CLICKED(IDC_BUTTON_PLAYER_PLAY, &CPlayerAviDlg::OnBnClickedButtonPlayerPlay)
-ON_EN_CHANGE(IDC_EDIT_NUMBER_FRAME, &CPlayerAviDlg::OnEnChangeEditNumberFrame)
 ON_WM_CLOSE()
+ON_NOTIFY(UDN_DELTAPOS, IDC_SPIN_NUMBER_FRAME, &CPlayerAviDlg::OnDeltaposSpinNumberFrame)
+ON_BN_CLICKED(IDC_BUTTON_OPEN, &CPlayerAviDlg::OnBnClickedButtonOpen)
+ON_EN_CHANGE(IDC_EDIT_NUMBER_FRAME, &CPlayerAviDlg::OnEnChangeEditNumberFrame)
 END_MESSAGE_MAP()
 
 
@@ -127,13 +129,17 @@ BOOL CPlayerAviDlg::OnInitDialog()
 	CRect rc;
 	GetClientRect(rc);
 	//int w = rc.Width();
-
-	player_avi = new MyPlayerAvi(&frame_wnd);
-
 	
-	//stream_header.
-	m_SliderFrame.SetRange(0, player_avi->get_length() - 1);
-	m_SliderFrame.SetPos(player_avi->get_pos());
+	
+	int w = 256;
+	int h = 256;
+	//int w = bmp_info.biWidth;
+	//int h = bmp_info.biHeight;
+
+	frame_manager = new FrameManager(w, h);
+	player = new Player(frame_manager, &file_manager);
+	decompressor = new Decompressor(frame_manager, &file_manager);
+	frame_wnd.initialize(frame_manager);
 
 	short max = 1000;
 	short nPos = 100;
@@ -143,23 +149,14 @@ BOOL CPlayerAviDlg::OnInitDialog()
 	m_SliderSpeed.SetPos(nPos);
 	m_SpinSpeed.SetPos(nPos);
 
-	
+
 	m_SpinNumFrame.SetBuddy(&m_EditNumFrame);
-	m_SpinNumFrame.SetRange(0, player_avi->get_length() - 1);
-	m_SpinNumFrame.SetPos(player_avi->get_pos());
-	player_avi->play();
+
+
 	
 
-	SetTimer(ID_timer_slider_frame, 30, NULL);
 
-	//flip_flop.initialize(w, h);
-	//Image image(w, h);
-	//my_avi->get_frame(0, &image);
-	//flip_flop.set_image(my_avi.get_frame());
-	//frame_wnd.set_reader(static_cast<IReader*>(&flip_flop));
-	//c_writer->initialize(static_cast<IWriter*>(&flip_flop), my_avi);
-	//frame_wnd.set_reader(static_cast<IReader*>(&flip_flop));
-	
+	SetTimer(ID_timer_update_window, 21, NULL);
 	
 	return TRUE;  // возврат значения TRUE, если фокус не передан элементу управления
 }
@@ -206,44 +203,6 @@ void CPlayerAviDlg::OnPaint()
 	}
 }
 
-void CPlayerAviDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
-{
-	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
-	if (pScrollBar->m_hWnd == m_SliderSpeed.m_hWnd)
-	{
-		m_SpinSpeed.SetPos(m_SliderSpeed.GetPos());
-		change_speed_player();
-	}
-
-	CDialogEx::OnVScroll(nSBCode, nPos, pScrollBar);
-}
-
-void CPlayerAviDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
-{
-	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
-	if (pScrollBar->m_hWnd == m_SliderFrame.m_hWnd)
-	{
-		player_avi->update_pos(m_SliderFrame.GetPos());
-	}
-	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
-}
-
-
-
-
-
-void CPlayerAviDlg::OnEnChangeEditSpeed()
-{
-	m_SliderSpeed.SetPos(m_SpinSpeed.GetPos());
-	change_speed_player();
-}
-
-
-void CPlayerAviDlg::OnEnKillfocusEditSpeed()
-{
-	m_SpinSpeed.SetPos(m_SpinSpeed.GetPos());
-	change_speed_player();
-}
 
 
 // Система вызывает эту функцию для получения отображения курсора при перемещении
@@ -255,48 +214,145 @@ HCURSOR CPlayerAviDlg::OnQueryDragIcon()
 
 
 
-
-
-
-
-
 void CPlayerAviDlg::OnBnClickedButtonPlayerStop()
 {
-	player_avi->stop();
+	player->stop();
 }
 
 
 void CPlayerAviDlg::OnBnClickedButtonPlayerPause()
 {
-	player_avi->pause();
+	player->pause();
 }
 
 
 void CPlayerAviDlg::OnBnClickedButtonPlayerPlay()
 {
-	player_avi->play();
+	player->play();
 }
 
 void CPlayerAviDlg::OnTimer(UINT_PTR nIDEvent)
 {
-	if (ID_timer_slider_frame == nIDEvent)
+	if (ID_timer_update_window == nIDEvent)
 	{
-		m_SliderFrame.SetPos(player_avi->get_pos());
-		m_SpinNumFrame.SetPos(player_avi->get_pos());
+		std::size_t pos = frame_manager->get_pos_display();
+		m_SliderFrame.SetPos(pos);
+		m_SpinNumFrame.SetPos(pos);
+		frame_wnd.Invalidate();
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
 }
 
-void CPlayerAviDlg::OnEnChangeEditNumberFrame()
+
+void CPlayerAviDlg::OnEnChangeEditSpeed()
 {
-	change_pos_player();
+	m_SliderSpeed.SetPos(m_SpinSpeed.GetPos());
+	player->update_speed(m_SpinSpeed.GetPos());
 }
 
+
+void CPlayerAviDlg::OnEnKillfocusEditSpeed()
+{
+	m_SpinSpeed.SetPos(m_SpinSpeed.GetPos());
+	player->update_speed(m_SpinSpeed.GetPos());
+}
+
+void CPlayerAviDlg::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
+	if (pScrollBar->m_hWnd == m_SliderSpeed.m_hWnd)
+	{
+		m_SpinSpeed.SetPos(m_SliderSpeed.GetPos());
+		player->update_speed(m_SpinSpeed.GetPos());
+	}
+
+	CDialogEx::OnVScroll(nSBCode, nPos, pScrollBar);
+}
+
+void CPlayerAviDlg::change_num_frame()
+{
+	if (is_dlg_change) frame_manager->update_pos_dec(m_SpinNumFrame.GetPos());
+}
+
+void CPlayerAviDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
+	if (pScrollBar->m_hWnd == m_SliderFrame.m_hWnd)
+	{
+		is_dlg_change = true;
+		m_SpinNumFrame.SetPos(m_SliderFrame.GetPos());
+		change_num_frame();
+	}
+	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
+}
+
+void CPlayerAviDlg::OnDeltaposSpinNumberFrame(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMUPDOWN pNMUpDown = reinterpret_cast<LPNMUPDOWN>(pNMHDR);
+	is_dlg_change = true;
+	*pResult = 0;
+}
+
+void CPlayerAviDlg::OnEnChangeEditNumberFrame()
+{
+	change_num_frame();
+}
 
 void CPlayerAviDlg::OnClose()
 {
 	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
-	delete player_avi;
+	if (player != nullptr) delete player;
+	if (decompressor != nullptr) delete decompressor;
+	if (frame_manager != nullptr) delete frame_manager;
 	CDialogEx::OnClose();
 }
+
+void CPlayerAviDlg::OnBnClickedButtonOpen()
+{
+	player->pause();
+	CFileDialog fileDlg(true, L"avi", L"*.avi",
+		OFN_FILEMUSTEXIST | OFN_HIDEREADONLY, L"Avi Files (*.avi)|*.avi|All Files (*.*)|*.*||", this);
+
+	if (fileDlg.DoModal() == IDOK)
+	{
+		player->stop();
+		decompressor->stop();
+
+
+		CString atl_str = fileDlg.GetPathName();
+		std::wstring ws(atl_str);
+		std::string s(ws.begin(), ws.end());
+		const char* str = s.c_str();
+		
+
+		bool is_stopped;
+		do
+		{
+			is_stopped = player->did_this_stop();
+			is_stopped &= decompressor->did_this_stop();
+		} while (!is_stopped);
+
+		Err err = file_manager.open_file(str);
+
+		if (err == Err::ok)
+		{
+			std::size_t length = file_manager.get_stream_header(0).dwLength;
+			std::size_t pos = frame_manager->get_pos_display();
+			m_SliderFrame.SetRange(0, length - 1);
+			m_SliderFrame.SetPos(pos);
+			m_SpinNumFrame.SetRange(0, length - 1);
+			m_SpinNumFrame.SetPos(pos);
+			player->rebuild();
+			decompressor->decompress();
+		}
+		else
+		{
+			this->Invalidate();
+			MessageBox(CreateStrErr(err), L"Err");
+		}
+	}
+}
+
+
+
